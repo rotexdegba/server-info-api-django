@@ -1,0 +1,101 @@
+Install & Run on Raspberry Pi (Debian 13 / Trixie)
+====================================================
+
+1. Update the system and install prerequisites
+-----------------------------------------------
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y git python3 python3-pip python3-venv \
+    pciutils usbutils
+
+Note: pciutils (lspci) and usbutils (lsusb) are needed for the hardware-info
+endpoint. They're optional — the app still runs without them but those fields
+will be empty.
+
+
+2. Clone the repository
+------------------------
+cd ~
+git clone https://github.com/rotexdegba/server-info-api-django.git
+cd server-info-api-django
+
+
+3. Create a virtual environment and install dependencies
+---------------------------------------------------------
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+Note: Debian 13 enforces PEP 668 — you cannot install packages system-wide
+with pip without --break-system-packages. A virtual environment is the clean
+approach. Every time you open a new terminal to work with the app, run
+"source venv/bin/activate" first.
+
+
+4. Allow your Pi's IP in Django settings
+------------------------------------------
+Find your Pi's IP:
+    hostname -I
+
+Edit config/settings.py and change:
+    ALLOWED_HOSTS = []
+
+to:
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.x.x']
+    # replace 192.168.x.x with your actual Pi IP
+
+Or use ['*'] to accept any host (fine for a home network, not for production).
+
+
+5. Apply database migrations
+------------------------------
+python3 manage.py migrate
+
+
+6. Create the default users
+-----------------------------
+python3 manage.py shell -c "
+from django.contrib.auth.models import User
+for u, p in [('admin','admin'),('root','root')]:
+    obj, created = User.objects.get_or_create(username=u, defaults=dict(is_superuser=True, is_staff=True))
+    obj.set_password(p)
+    obj.save()
+print('Done')
+"
+
+
+7. Run the development server
+-------------------------------
+python3 manage.py runserver 0.0.0.0:8000 --noreload
+
+0.0.0.0:8000 makes the server listen on all network interfaces so you can
+access it from other devices on your network.
+
+
+8. Access the app
+------------------
+URL                                         Description
+---                                         -----------
+http://<pi-ip>:8000/                        Public dashboard (basic summary)
+http://<pi-ip>:8000/server/login            Login page
+http://<pi-ip>:8000/server/server-overview  JSON API (needs ?token= or login)
+http://<pi-ip>:8000/tokens/                 Token management
+
+Default credentials: admin / admin  or  root / root
+
+
+Troubleshooting
+----------------
+DisallowedHost error
+    Your Pi's IP isn't in ALLOWED_HOSTS. Add it as shown in step 4.
+
+"django" not found after reopening terminal
+    You're outside the venv. Run: source venv/bin/activate
+
+Hardware info empty
+    lspci/lsusb may not be in PATH, or the Pi has no PCI bus (normal for Pi).
+    Sound card info requires /proc/asound/cards which may not exist on a
+    headless Pi.
+
+Permission denied on /proc or /sys
+    Unlikely on Debian, but if it happens run the server as your normal user
+    (not root).
