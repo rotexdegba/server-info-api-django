@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% load humanize %}
+
+<div id="server-index">
+    <div class="row">
+        <div class="col s12">
+            <ul class="collection with-header">
+                <li class="collection-header"><h4>Server Summary</h4></li>
+                <li class="collection-item"><strong>{{ hostName.label }}:</strong> {{ hostName.value }}</li>
+                <li class="collection-item"><strong>{{ distroNameAndVersion.label }}:</strong> {{ distroNameAndVersion.value }}</li>
+                <li class="collection-item"><strong>{{ kernelVersion.label }}:</strong> {{ kernelVersion.value }}</li>
+                <li class="collection-item"><strong>{{ osFamily.label }}:</strong> {{ osFamily.value }}</li>
+                <li class="collection-item"><strong>{{ architecture.label }}:</strong> {{ architecture.value }}</li>
+                <li class="collection-item"><strong>{{ machineModel.label }}:</strong> {{ machineModel.value }}</li>
+
+                {% if user.is_authenticated %}
+                <li class="collection-item"><strong>{{ virtualization.label }}:</strong> {{ virtualization.value }}</li>
+                <li class="collection-item"><strong>{{ webSoftware.label }}:</strong> {{ webSoftware.value }}</li>
+                <li class="collection-item"><strong>{{ pythonVersion.label }}:</strong> {{ pythonVersion.value }}</li>
+
+                <li class="collection-item">
+                    <strong><i class="material-icons tiny">memory</i> {{ totalRamBytes.label }}:</strong>
+                    <label for="ram_usage">{{ usedRamBytes.value|filesizeformat }} of {{ totalRamBytes.value|filesizeformat }}</label>
+                    <meter id="ram_usage" value="{{ usedRamBytes.value }}" min="0" max="{{ totalRamBytes.value }}">
+                        {{ usedRamBytes.value|filesizeformat }} of {{ totalRamBytes.value|filesizeformat }}
+                    </meter>
+                </li>
+
+                {% if usedSwapBytes.value > 0 and totalSwapBytes.value > 0 %}
+                <li class="collection-item">
+                    <strong><i class="material-icons tiny">memory</i> {{ totalSwapBytes.label }}:</strong>
+                    <label for="swap_usage">{{ usedSwapBytes.value|filesizeformat }} of {{ totalSwapBytes.value|filesizeformat }}</label>
+                    <meter id="swap_usage" value="{{ usedSwapBytes.value }}" min="0" max="{{ totalSwapBytes.value }}">
+                        {{ usedSwapBytes.value|filesizeformat }} of {{ totalSwapBytes.value|filesizeformat }}
+                    </meter>
+                </li>
+                {% endif %}
+
+                <li class="collection-item">
+                    <ul class="collection with-header">
+                        <li class="collection-header"><h5>CPU Information</h5></li>
+                        <li class="collection-item"><strong>{{ overallCpuUsagePercent.label }}:</strong> {{ overallCpuUsagePercent.value|floatformat:2 }} %</li>
+                        <li class="collection-item"><strong>{{ totalNumPhyscCpuCores.label }}:</strong> {{ totalNumPhyscCpuCores.value }}</li>
+                        <li class="collection-item"><strong>{{ totalNumVirtOrLogicalProcessors.label }}:</strong> {{ totalNumVirtOrLogicalProcessors.value }}</li>
+                        <li class="collection-item">
+                            <div class="row">
+                                {% for cpu in cpuInfo %}
+                                <div class="col s12 m6">
+                                    <div class="card blue-grey darken-1">
+                                        <div class="card-content white-text">
+                                            <span class="card-title">{{ cpu.cpu_number.label }} {{ cpu.cpu_number.value }}</span>
+                                            <ul class="collection black-text">
+                                                <li class="collection-item">
+                                                    <strong>{{ cpu.usage_percentage.label }}:</strong>
+                                                    <label for="cpu_{{ cpu.cpu_number.value }}"> {{ cpu.usage_percentage.value }} %</label>
+                                                    <meter id="cpu_{{ cpu.cpu_number.value }}" value="{{ cpu.usage_percentage.value }}" min="0" max="100">
+                                                        {{ cpu.usage_percentage.value }} %
+                                                    </meter>
+                                                </li>
+                                                <li class="collection-item"><strong>{{ cpu.vendor.label }}:</strong> {{ cpu.vendor.value }}</li>
+                                                <li class="collection-item"><strong>{{ cpu.model.label }}:</strong> {{ cpu.model.value }}</li>
+                                                <li class="collection-item"><strong>{{ cpu.speed_mhz.label }}:</strong> {{ cpu.speed_mhz.value }}</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </li>
+                    </ul>
+                </li>
+                {% endif %}{# is_authenticated #}
+
+                <li class="collection-item"><strong>{{ lastBootedOn.label }}:</strong> {{ lastBootedOn.value }}</li>
+                <li class="collection-item"><strong>{{ uptime.label }}:</strong> {{ uptime.value }}</li>
+                <li class="collection-item"><strong>{{ loggedInUsers.label }}:</strong> {{ loggedInUsers.value }}</li>
+
+                {% if selinuxEnabled.value != -1 %}
+                <li class="collection-item"><strong>{{ selinuxEnabled.label }}:</strong> {% if selinuxEnabled.value %}Yes{% else %}No{% endif %}</li>
+                <li class="collection-item"><strong>{{ selinuxMode.label }}:</strong> {{ selinuxMode.value }}</li>
+                <li class="collection-item"><strong>{{ selinuxPolicy.label }}:</strong> {{ selinuxPolicy.value }}</li>
+                {% endif %}
+
+                {% if user.is_authenticated %}
+
+                {# Disk Drives #}
+                <li class="collection-item">
+                    <ul class="collection with-header">
+                        <li class="collection-header"><h5>Disk Drive Info</h5></li>
+                        {% if diskDrivesInfo %}
+                        <li class="collection-item">
+                            <table id="disk-drives-table" class="display">
+                                <thead><tr>
+                                    <th>Name</th><th>Vendor</th><th>Device</th>
+                                    <th>Bytes Read</th><th>Bytes Written</th><th>Total Size</th>
+                                </tr></thead>
+                                <tbody>
+                                {% for d in diskDrivesInfo %}
+                                <tr>
+                                    <td>
+                                        {{ d.name }}
+                                        {% if d.partitions %}
+                                        <ul>{% for p in d.partitions %}
+                                            <li><strong>&#9492; {{ p.name }}:</strong> {{ p.size_in_bytes|filesizeformat }}</li>
+                                        {% endfor %}</ul>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ d.vendor }}</td>
+                                    <td>{{ d.device }}</td>
+                                    <td>{% if d.bytes_read >= 0 %}{{ d.bytes_read|filesizeformat }}{% endif %}</td>
+                                    <td>{% if d.bytes_written >= 0 %}{{ d.bytes_written|filesizeformat }}{% endif %}</td>
+                                    <td>{% if d.size_in_bytes >= 0 %}{{ d.size_in_bytes|filesizeformat }}{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+
+                {# Disk Mounts #}
+                <li class="collection-item">
+                    <ul class="collection with-header">
+                        <li class="collection-header"><h5>Disk Mount Info</h5></li>
+                        {% if diskMountsInfo %}
+                        <li class="collection-item">
+                            <table id="disk-mounts-table" class="display">
+                                <thead><tr>
+                                    <th>Name</th><th>Mount Point</th><th>Mount Options</th>
+                                    <th>Type</th><th>Size</th><th>Used</th><th>Free</th><th>Percent Used</th>
+                                </tr></thead>
+                                <tbody>
+                                {% for m in diskMountsInfo %}
+                                <tr>
+                                    <td>{{ m.name }}</td>
+                                    <td>{{ m.mount_point }}</td>
+                                    <td>{% if m.options %}<ul>{% for o in m.options %}<li>{{ o }}</li>{% endfor %}</ul>{% endif %}</td>
+                                    <td>{{ m.type }}</td>
+                                    <td>{% if m.size_in_bytes >= 0 %}{{ m.size_in_bytes|filesizeformat }}{% endif %}</td>
+                                    <td>{% if m.used_bytes >= 0 %}{{ m.used_bytes|filesizeformat }}{% endif %}</td>
+                                    <td>{% if m.free_bytes >= 0 %}{{ m.free_bytes|filesizeformat }}{% endif %}</td>
+                                    <td>{% if m.used_percent >= 0 %}{{ m.used_percent }} %{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+
+                {# Hardware Devices #}
+                <li class="collection-item">
+                    <ul class="collection with-header">
+                        <li class="collection-header"><h5>Hardware Device Info</h5></li>
+                        {% if hwInfo %}
+                        <li class="collection-item">
+                            <table id="hw-devices-table" class="display">
+                                <thead><tr><th>Type</th><th>Name</th><th>Vendor</th></tr></thead>
+                                <tbody>
+                                {% for h in hwInfo %}
+                                <tr><td>{{ h.type }}</td><td>{{ h.name }}</td><td>{{ h.vendor }}</td></tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+
+                {# Sound Cards #}
+                <li class="collection-item">
+                    <ul class="collection with-header">
+                        <li class="collection-header"><h5>Sound Card Info</h5></li>
+                        {% if sCardInfo %}
+                        <li class="collection-item">
+                            <table id="soundcard-devices-table" class="display">
+                                <thead><tr><th>Name</th><th>Vendor</th></tr></thead>
+                                <tbody>
+                                {% for c in sCardInfo %}
+                                <tr><td>{{ c.name }}</td><td>{{ c.vendor }}</td></tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+
+                {# Network #}
+                <li class="collection-item">
+                    <ul class="collection with-header">
+                        <li class="collection-header"><h5>Network Devices</h5></li>
+                        {% if networkInfo %}
+                        <li class="collection-item">
+                            <table id="network-devices-table" class="display">
+                                <thead><tr>
+                                    <th>Name</th><th>Type</th><th>State</th><th>Port Speed</th>
+                                    <th>Bytes Received</th><th>Bytes Sent</th>
+                                    <th>Packets Received</th><th>Packets Sent</th>
+                                </tr></thead>
+                                <tbody>
+                                {% for n in networkInfo %}
+                                <tr>
+                                    <td>{{ n.name }}</td>
+                                    <td>{{ n.type }}</td>
+                                    <td>{{ n.state }}</td>
+                                    <td>{% if n.speed_bits_per_second > 0 %}{{ n.speed_gbps }} Gb/s{% endif %}</td>
+                                    <td>{% if n.num_bytes_received >= 0 %}{{ n.num_bytes_received|filesizeformat }}{% endif %}</td>
+                                    <td>{% if n.num_bytes_sent >= 0 %}{{ n.num_bytes_sent|filesizeformat }}{% endif %}</td>
+                                    <td>{% if n.num_received_packets >= 0 %}{{ n.num_received_packets|intcomma }}{% endif %}</td>
+                                    <td>{% if n.num_sent_packets >= 0 %}{{ n.num_sent_packets|intcomma }}{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+
+                {# Processes #}
+                <li class="collection-item">
+                    <ul class="collection with-header">
+                        <li class="collection-header"><h5>Process Information</h5></li>
+                        {% for ps in processSummaryInfo %}
+                        <li class="collection-item"><strong>{{ ps.label }}:</strong> {{ ps.value }}</li>
+                        {% endfor %}
+                        {% if processesInfo %}
+                        <li class="collection-item">
+                            <table id="processes-table" class="display">
+                                <thead><tr>
+                                    <th>Name</th><th>Command Line</th><th>Threads</th><th>State</th>
+                                    <th>Memory</th><th>Peak Memory</th><th>PID</th><th>User</th>
+                                    <th>Bytes Read</th><th>Bytes Written</th>
+                                </tr></thead>
+                                <tbody>
+                                {% for p in processesInfo %}
+                                <tr>
+                                    <td>{{ p.name }}</td>
+                                    <td title="{{ p.command_line }}">
+                                        {% if p.command_line|length > 20 %}{{ p.command_line|slice:":20" }}....{% else %}{{ p.command_line }}{% endif %}
+                                    </td>
+                                    <td>{{ p.num_threads }}</td>
+                                    <td>{{ p.state }}</td>
+                                    <td>{% if p.memory > 0 %}{{ p.memory|filesizeformat }}{% endif %}</td>
+                                    <td>{% if p.peak_memory > 0 %}{{ p.peak_memory|filesizeformat }}{% endif %}</td>
+                                    <td>{{ p.pid }}</td>
+                                    <td>{{ p.user }}</td>
+                                    <td>{% if p.io_bytes_read > 0 %}{{ p.io_bytes_read|filesizeformat }}{% endif %}</td>
+                                    <td>{% if p.io_bytes_written > 0 %}{{ p.io_bytes_written|filesizeformat }}{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+
+                {# Services #}
+                <li class="collection-item">
+                    <ul class="collection with-header">
+                        <li class="collection-header"><h5>Service Information</h5></li>
+                        {% if servicesInfo %}
+                        <li class="collection-item">
+                            <table id="services-table" class="display">
+                                <thead><tr>
+                                    <th>Name</th><th>Description</th><th>Loaded</th><th>Started</th><th>State</th>
+                                </tr></thead>
+                                <tbody>
+                                {% for s in servicesInfo %}
+                                <tr>
+                                    <td>{{ s.name }}</td>
+                                    <td>{{ s.description }}</td>
+                                    <td>{{ s.loaded }}</td>
+                                    <td>{{ s.started }}</td>
+                                    <td>{{ s.state }}</td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+
+                {% endif %}{# is_authenticated #}
+            </ul>
+        </div>
+    </div>
+
+    {% if not user.is_authenticated %}
+    <div class="row">
+        <div class="col s12 center">
+            <h5>Please Log in to view more detailed Server Information</h5>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+$(document).ready(function () {
+    {% if user.is_authenticated %}
+    var dtOpts = { responsive: true, lengthMenu: [10, 25, 50, 75, 100, 250, 500, 1000, 5000] };
+    $('#soundcard-devices-table').DataTable(dtOpts);
+    $('#disk-drives-table').DataTable(dtOpts);
+    $('#disk-mounts-table').DataTable(dtOpts);
+    $('#hw-devices-table').DataTable(dtOpts);
+    $('#network-devices-table').DataTable(dtOpts);
+    $('#processes-table').DataTable(dtOpts);
+    $('#services-table').DataTable(dtOpts);
+    {% endif %}
+});
+</script>
+{% endblock %}

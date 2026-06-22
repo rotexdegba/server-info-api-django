@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col s12 m8 offset-m2">
+        <div class="card">
+            <div class="card-content">
+                <span class="card-title">{{ form_title }}</span>
+                <form method="post" action="{{ form_action }}">
+                    {% csrf_token %}
+                    <div class="input-field">
+                        <input id="token_val" type="text" value="{{ token_value }}" readonly class="validate">
+                        <label for="token_val" class="active">Token (auto-generated)</label>
+                    </div>
+                    <div class="input-field">
+                        <input id="expiry_date" name="expiry_date" type="date"
+                               value="{{ default_expiry }}" required class="validate">
+                        <label for="expiry_date" class="active">Expiry Date</label>
+                    </div>
+                    <div class="input-field">
+                        <input id="max_requests_per_day" name="max_requests_per_day" type="number"
+                               value="{{ max_requests_per_day }}" min="0" class="validate">
+                        <label for="max_requests_per_day" class="active">Max Requests Per Day (0 = unlimited)</label>
+                    </div>
+                    <div class="row" style="margin-top:1rem">
+                        <div class="col s6">
+                            <button type="submit" class="btn waves-effect waves-light light-blue darken-4">
+                                Save <i class="material-icons right">save</i>
+                            </button>
+                        </div>
+                        <div class="col s6 right-align">
+                            <a href="/tokens/my-tokens" class="btn waves-effect waves-light grey darken-1">
+                                Cancel
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

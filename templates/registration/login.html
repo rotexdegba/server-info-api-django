@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col s12 m6 offset-m3">
+        {% if error %}
+        <div class="card-panel red darken-4 white-text">
+            <i class="material-icons medium">error</i> {{ error }}
+        </div>
+        {% endif %}
+
+        {% if user.is_authenticated %}
+        <form method="post" action="/server/logout">
+            {% csrf_token %}
+            <button type="submit" class="btn waves-effect waves-light orange accent-4">
+                Logout <i class="material-icons right">exit_to_app</i>
+            </button>
+        </form>
+        {% else %}
+        <div class="card">
+            <div class="card-content">
+                <span class="card-title">Login</span>
+                <form method="post" action="/server/login">
+                    {% csrf_token %}
+                    <div class="input-field">
+                        <input id="username" name="username" type="text" class="validate" required>
+                        <label for="username">Username</label>
+                    </div>
+                    <div class="input-field">
+                        <input id="password" name="password" type="password" class="validate" required>
+                        <label for="password">Password</label>
+                    </div>
+                    <button type="submit" class="btn waves-effect waves-light light-blue darken-4">
+                        Login <i class="material-icons right">send</i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
